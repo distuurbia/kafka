@@ -1,0 +1,25 @@
+version: "3.9"
+services:
+
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: "kafkaDB"
+      POSTGRES_USER: "olegKafka"
+      POSTGRES_PASSWORD: "olegKafka"
+    ports:
+      - 5432:5432
+      
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
