@@ -6,19 +6,25 @@ import (
 	"log"
 	"time"
 
+	"github.com/caarlos0/env"
+	"github.com/distuurbia/kafka/config"
 	"github.com/segmentio/kafka-go"
 )
 
 func main() {
-	topic := "my-topic"
-	brokerAddress := "localhost:9092"
+	var cfg config.Config
+	if err := env.Parse(&cfg); err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
+	}
+	topic := cfg.Topic
+	brokerAddress := cfg.BrokerAddress
 
 	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:  []string{brokerAddress},
-		Topic:    topic,
-		Balancer: &kafka.LeastBytes{},
+		Brokers:      []string{brokerAddress},
+		Topic:        topic,
+		Balancer:     &kafka.LeastBytes{},
 		BatchSize:    1,
-    	BatchTimeout: 10 * time.Millisecond,
+		BatchTimeout: 10 * time.Millisecond,
 	})
 
 	defer writer.Close()

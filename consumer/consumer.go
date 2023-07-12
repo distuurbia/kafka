@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/caarlos0/env"
+	"github.com/distuurbia/kafka/config"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 )
-func connectPostgres() (*pgxpool.Pool, error) {
-	conf, err := pgxpool.ParseConfig("postgres://olegKafka:olegKafka@localhost:5432/kafkaDB")
+func connectPostgres(cfg *config.Config) (*pgxpool.Pool, error) {
+	conf, err := pgxpool.ParseConfig(cfg.PostgresPathKafka)
 	if err != nil {
 		return nil, fmt.Errorf("error in method pgxpool.ParseConfig: %v", err)
 	}
@@ -23,10 +25,14 @@ func connectPostgres() (*pgxpool.Pool, error) {
 }
 
 func main() {
-	topic := "my-topic"
-	brokerAddress := "localhost:9092"
-	groupID := "my-consumer-group"
-	pool, err := connectPostgres()
+	var cfg config.Config
+	if err := env.Parse(&cfg); err != nil {
+		log.Fatalf("Failed to parse config: %v", err)
+	}
+	topic := cfg.Topic
+	brokerAddress := cfg.BrokerAddress
+	groupID := cfg.GroupID
+	pool, err := connectPostgres(&cfg)
 	if err != nil {
 		logrus.Fatalf("failed to connect postgres error: %v", err)
 	}

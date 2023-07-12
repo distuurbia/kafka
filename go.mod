@@ -15,6 +15,7 @@ require (
 )
 
 require (
+	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.4.2
 	github.com/klauspost/compress v1.15.9 // indirect
