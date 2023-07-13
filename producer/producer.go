@@ -31,13 +31,16 @@ func main() {
 
 	message := kafka.Message{
 		Key:   []byte("key"),
-		Value: []byte("wassaaap"),
+		Value: []byte("wassap, kafka"),
 	}
-	for i := 0; i < 2000; i++ {
+	msgCount := 0
+	start := time.Now()
+	for time.Since(start) < time.Second && msgCount < 4000{
 		err := writer.WriteMessages(context.Background(), message)
 		if err != nil {
 			log.Fatal("Failed to write message:", err)
 		}
+		msgCount++
 	}
-	fmt.Println("Message sent successfully")
+	fmt.Println(msgCount, " Message sent successfully")
 }

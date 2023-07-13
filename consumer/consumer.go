@@ -4,14 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/caarlos0/env"
 	"github.com/distuurbia/kafka/config"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 )
+type dbStruct struct{
+	message kafka.Message
+	id uuid.UUID
+}
+
 func connectPostgres(cfg *config.Config) (*pgxpool.Pool, error) {
 	conf, err := pgxpool.ParseConfig(cfg.PostgresPathKafka)
 	if err != nil {
@@ -43,15 +50,46 @@ func main() {
 	})
 
 	defer reader.Close()
+	msgCount := 0
 
-	for {
+	var messages []*dbStruct
+	start := time.Now()
+	
+	for time.Since(start) < time.Second && msgCount < 4000{ //&& msgCount < 4000
 		message, err := reader.ReadMessage(context.Background())
 		if err != nil {
-			log.Fatal("Failed to read message:", err)
+			logrus.Fatalf("failed to read message: %v", err)
 		}
 		if message.Value != nil {
 			id := uuid.New()
-			pool.Exec(context.Background(), "INSERT INTO kafkamsg (id, key, message) VALUES ($1, $2, $3)", id, message.Key, message.Value)
+			messages = append(messages, &dbStruct{message: message, id: id})
+			msgCount++
 		}
 	}
+
+
+	conn, err := pool.Acquire(context.Background())
+	if err != nil {
+		logrus.Fatalf("failed to acquire connection from pool: %v", err)
+	}
+	writeToPostgres(conn, messages)
+
+	fmt.Println(msgCount, " Message read successfully")
+}
+
+func writeToPostgres(conn *pgxpool.Conn, messages []*dbStruct) {
+	batch := &pgx.Batch{}
+	for _, msg := range messages{
+		batch.Queue("INSERT INTO kafkamsg (id, key, message) VALUES ($1, $2, $3)", msg.id, msg.message.Key, msg.message.Value)
+	}
+
+	br := conn.SendBatch(context.Background(), batch)
+	for i := 0; i < len(messages); i++{
+		_, err := br.Exec()
+		if err != nil {
+			logrus.Fatalf("failed to exec batch: %v", err)
+		}
+	}
+	defer br.Close()
+	defer conn.Release()
 }
